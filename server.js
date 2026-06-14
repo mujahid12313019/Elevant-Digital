@@ -1,22 +1,45 @@
 import express from "express";
+import bodyParser from "body-parser";
 
 const app = express();
 
-app.use(express.json({ limit: "20mb" }));
-app.use(express.urlencoded({ extended: true, limit: "20mb" }));
+// 🔥 SAFE LIMIT (still needed but not critical now)
+app.use(bodyParser.json({ limit: "50mb" }));
+app.use(bodyParser.urlencoded({ extended: true, limit: "50mb" }));
+
 app.post("/chunk", (req, res) => {
-  const text = req.body.text;
+  try {
+    let text = req.body?.text;
 
-  const size = 1000;
-  const overlap = 200;
+    if (!text || typeof text !== "string") {
+      return res.status(400).json({ error: "Text is required" });
+    }
 
-  let chunks = [];
+    // 🔥 CLEAN TEXT (VERY IMPORTANT)
+    text = text.replace(/\s+/g, " ").trim();
 
-  for (let i = 0; i < text.length(); i += (size - overlap)) {
-    chunks.push(text.slice(i, i + size));
+    // 🔥 AUTO CHUNK SETTINGS
+    const CHUNK_SIZE = 1200;
+    const OVERLAP = 200;
+    const STEP = CHUNK_SIZE - OVERLAP;
+
+    const chunks = [];
+
+    for (let i = 0; i < text.length; i += STEP) {
+      chunks.push({
+        id: chunks.length,
+        content: text.slice(i, i + CHUNK_SIZE),
+      });
+    }
+
+    return res.json({
+      totalChunks: chunks.length,
+      chunks,
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: "Server error" });
   }
-
-  res.json({ chunks });
 });
 
 app.listen(3000, () => console.log("Running"));
