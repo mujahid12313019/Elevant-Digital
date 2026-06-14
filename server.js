@@ -1,45 +1,60 @@
 import express from "express";
 import bodyParser from "body-parser";
+import dotenv from "dotenv";
+
+import { ingestBook } from "./src/ingestion/ingestBook.js";
+import { askQuestion } from "./src/retrieval/askQuestion.js";
+
+dotenv.config();
 
 const app = express();
 
-// 🔥 SAFE LIMIT (still needed but not critical now)
 app.use(bodyParser.json({ limit: "50mb" }));
 app.use(bodyParser.urlencoded({ extended: true, limit: "50mb" }));
 
-app.post("/chunk", (req, res) => {
+// Health check
+app.get("/", (req, res) => {
+  res.json({ status: "RAG server running" });
+});
+
+// INGEST (Google Drive → Make calls this)
+app.post("/ingest", async (req, res) => {
   try {
-    let text = req.body?.text;
+    const { text } = req.body;
 
-    if (!text || typeof text !== "string") {
-      return res.status(400).json({ error: "Text is required" });
+    if (!text) {
+      return res.status(400).json({ error: "text required" });
     }
 
-    // 🔥 CLEAN TEXT (VERY IMPORTANT)
-    text = text.replace(/\s+/g, " ").trim();
+    const result = await ingestBook(text);
 
-    // 🔥 AUTO CHUNK SETTINGS
-    const CHUNK_SIZE = 1200;
-    const OVERLAP = 200;
-    const STEP = CHUNK_SIZE - OVERLAP;
-
-    const chunks = [];
-
-    for (let i = 0; i < text.length; i += STEP) {
-      chunks.push({
-        id: chunks.length,
-        content: text.slice(i, i + CHUNK_SIZE),
-      });
-    }
-
-    return res.json({
-      totalChunks: chunks.length,
-      chunks,
-    });
+    res.json(result);
   } catch (err) {
     console.error(err);
-    return res.status(500).json({ error: "Server error" });
+    res.status(500).json({ error: "ingest failed" });
   }
 });
 
-app.listen(3000, () => console.log("Running"));
+// ASK (Discord → Make → this API)
+app.post("/ask", async (req, res) => {
+  try {
+    const { question } = req.body;
+
+    if (!question) {
+      return res.status(400).json({ error: "question required" });
+    }
+
+    const answer = await askQuestion(question);
+
+    res.json(answer);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "ask failed" });
+  }
+});
+
+const PORT = process.env.PORT || 3000;
+
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
