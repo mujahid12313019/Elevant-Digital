@@ -12,7 +12,7 @@ app.post("/chunk", (req, res) => {
 
   let chunks = [];
 
-  for (let i = 0; i < text.length; i += (size - overlap)) {
+  for (let i = 0; i < text.length(); i += (size - overlap)) {
     chunks.push(text.slice(i, i + size));
   }
 
