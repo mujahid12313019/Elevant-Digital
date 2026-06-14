@@ -1,5 +1,6 @@
 import express from "express";
-
+app.use(express.json({ limit: "20mb" }));
+app.use(express.urlencoded({ extended: true, limit: "20mb" }));
 const app = express();
 app.use(express.json());
 
