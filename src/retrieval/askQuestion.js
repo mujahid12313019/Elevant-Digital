@@ -4,7 +4,7 @@ import { qdrant } from "../config/qdrant.js";
 // detect book (simple version)
 async function detectBook(question) {
   const res = await ai.models.generateContent({
-    model: "gemini-1.5-flash",
+    model: "gemini-2.5-flash",
     contents: `
 Detect if a book name is mentioned.
 
@@ -49,14 +49,20 @@ export async function askQuestion(question) {
     vector,
     limit: 5,
     filter,
+    with_payload: true
   });
+console.log(JSON.stringify(searchRes.data, null, 2));
+  const results = Array.isArray(searchRes?.data?.result)
+    ? searchRes.data.result
+    : [];
 
-  const contexts = searchRes.data.result
-    .map((r) => r.payload.text)
+  const contexts = results
+    .map((r) => r?.payload?.text ?? "")
+    .filter(Boolean)
     .join("\n\n");
 
   const final = await ai.models.generateContent({
-    model: "gemini-1.5-flash",
+    model: "gemini-2.5-flash",
     contents: `
 Answer using context only:
 
