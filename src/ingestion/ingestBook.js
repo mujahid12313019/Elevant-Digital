@@ -6,7 +6,7 @@ import { updateProgress, updateStatus, setJobResult } from "./jobManager.js";
 
 export async function ingestBook(text) {
   // keep original behavior (synchronous) for backward compatibility
-  const bookName = await extractTitle(text);
+  const bookName = path.basename(filePath, ".pdf");
   const chunks = chunkText(text);
 
   for (let i = 0; i < chunks.length; i++) {

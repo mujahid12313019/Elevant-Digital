@@ -9,11 +9,11 @@ import { askQuestion } from "./src/retrieval/askQuestion.js";
 dotenv.config();
 
 const app = express();
-
+console.log(process.env);
 app.use(bodyParser.json({ limit: "50mb" }));
 app.use(bodyParser.urlencoded({ extended: true, limit: "50mb" }));
 
-// Health check
+
 app.get("/", (req, res) => {
   res.json({ status: "RAG server running" });
 });
