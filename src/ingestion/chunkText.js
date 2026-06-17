@@ -1,14 +1,17 @@
-export function chunkText(text) {
+export function chunkText(text, size = 1200, overlap = 200) {
+  if (!text || typeof text !== "string") return [];
+
   const clean = text.replace(/\s+/g, " ").trim();
+  if (clean.length === 0) return [];
 
-  const size = 1200;
-  const overlap = 200;
-  const step = size - overlap;
-
+  const step = Math.max(1, size - overlap);
   const chunks = [];
 
   for (let i = 0; i < clean.length; i += step) {
-    chunks.push(clean.slice(i, i + size));
+    const chunk = clean.slice(i, i + size);
+    if (chunk.trim()) {
+      chunks.push(chunk);
+    }
   }
 
   return chunks;

@@ -5,9 +5,18 @@ import { qdrant } from "../config/qdrant.js";
 import { updateProgress, updateStatus, setJobResult } from "./jobManager.js";
 
 export async function ingestBook(text) {
+  // Input validation
+  if (!text || typeof text !== "string" || text.trim().length === 0) {
+    throw new Error("Invalid text: must be non-empty string");
+  }
+
   // keep original behavior (synchronous) for backward compatibility
-  const bookName = path.basename(filePath, ".pdf");
+  const bookName = await extractTitle(text);
   const chunks = chunkText(text);
+
+  if (chunks.length === 0) {
+    throw new Error("No chunks extracted from text");
+  }
 
   for (let i = 0; i < chunks.length; i++) {
     const embedding = await ai.models.embedContent({
@@ -43,6 +52,10 @@ export async function ingestBookBackground(jobId, text, opts = {}) {
   const BATCH_SIZE = opts.batchSize || 50; // points per Qdrant insert
   const EMBED_BATCH = opts.embedBatchSize || 50; // try to embed this many at once
 
+  if (!text || typeof text !== "string" || text.trim().length === 0) {
+    throw new Error("Invalid text: must be non-empty string");
+  }
+
   updateStatus(jobId, "processing");
 
   try {
@@ -50,12 +63,17 @@ export async function ingestBookBackground(jobId, text, opts = {}) {
     const chunks = chunkText(text);
     const total = chunks.length;
 
+    if (total === 0) {
+      throw new Error("No chunks extracted from text");
+    }
+
     let processed = 0;
     let idCounter = Date.now();
 
     // helper to obtain embeddings for an array of contents
     async function embedBatch(contents) {
-      // Attempt to send multiple contents in one call; if API returns single embedding, fallback to per-item
+      if (!contents || contents.length === 0) return [];
+
       try {
         const res = await ai.models.embedContent({
           model: "gemini-embedding-001",
@@ -79,8 +97,13 @@ export async function ingestBookBackground(jobId, text, opts = {}) {
       // fallback: embed one-by-one
       const out = [];
       for (const c of contents) {
-        const r = await ai.models.embedContent({ model: "gemini-embedding-001", contents: c });
-        out.push(r.embeddings[0].values);
+        try {
+          const r = await ai.models.embedContent({ model: "gemini-embedding-001", contents: c });
+          out.push(r.embeddings[0].values);
+        } catch (e) {
+          console.error(`Failed to embed chunk: ${e.message}`);
+          throw e;
+        }
       }
       return out;
     }
@@ -110,21 +133,24 @@ export async function ingestBookBackground(jobId, text, opts = {}) {
       }
 
       // flush any remaining points from this embedding batch
-      if (points.length) {
+      if (points.length > 0) {
         await qdrant.put("/collections/books/points", { points });
       }
 
       processed = Math.min(i + EMBED_BATCH, total);
       const percent = Math.round((processed / total) * 100);
       updateProgress(jobId, percent);
+      console.log(`[INGEST] ${percent}% complete (${processed}/${total} chunks)`);
     }
 
     // finalize
     setJobResult(jobId, { bookName, chunksStored: total });
     updateProgress(jobId, 100);
     updateStatus(jobId, "completed");
+    console.log(`[INGEST] Complete: "${bookName}" (${total} chunks stored)`);
     return { bookName, chunksStored: total };
   } catch (err) {
+    console.error(`[INGEST] Failed: ${err.message}`);
     updateStatus(jobId, "failed", err?.message || String(err));
     throw err;
   }

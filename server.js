@@ -9,7 +9,6 @@ import { askQuestion } from "./src/retrieval/askQuestion.js";
 dotenv.config();
 
 const app = express();
-console.log(process.env);
 app.use(bodyParser.json({ limit: "50mb" }));
 app.use(bodyParser.urlencoded({ extended: true, limit: "50mb" }));
 
@@ -23,8 +22,12 @@ app.post("/ingest", (req, res) => {
   try {
     const { text } = req.body;
 
-    if (!text) {
-      return res.status(400).json({ error: "text required" });
+    if (!text || typeof text !== "string" || text.trim().length === 0) {
+      return res.status(400).json({ error: "text required (non-empty string)" });
+    }
+
+    if (text.length > 10_000_000) {
+      return res.status(413).json({ error: "text too large (max 10MB)" });
     }
 
     // create job and return immediately
@@ -44,7 +47,7 @@ app.post("/ingest", (req, res) => {
 
     res.json({ success: true, status: "processing", jobId });
   } catch (err) {
-    console.error(err);
+    console.error("Ingest error:", err);
     res.status(500).json({ error: "ingest failed" });
   }
 });
@@ -62,16 +65,19 @@ app.post("/ask", async (req, res) => {
   try {
     const { question } = req.body;
 
-    if (!question) {
-      return res.status(400).json({ error: "question required" });
+    if (!question || typeof question !== "string" || question.trim().length === 0) {
+      return res.status(400).json({ error: "question required (non-empty string)" });
     }
 
-    const answer = await askQuestion(question);
+    if (question.length > 5000) {
+      return res.status(413).json({ error: "question too long (max 5000 chars)" });
+    }
 
+    const answer = await askQuestion(question.trim());
     res.json(answer);
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "ask failed" });
+    console.error("Ask error:", err.message);
+    res.status(500).json({ error: "ask failed", details: err.message });
   }
 });
 
