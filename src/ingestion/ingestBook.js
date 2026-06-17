@@ -128,13 +128,28 @@ export async function ingestBookBackground(jobId, text, opts = {}) {
 
         // when points length reaches BATCH_SIZE, flush to Qdrant
         if (points.length >= BATCH_SIZE) {
-          await qdrant.put("/collections/books/points", { points: points.splice(0) });
+          try {
+            await qdrant.put("/collections/books/points", { points });
+          } catch (err) {
+            if (err.response?.status === 404) {
+              throw new Error(`Collection 'books' not found. Run 'node embedding.js' first to create it.`);
+            }
+            throw err;
+          }
+          points.length = 0; // Clear array
         }
       }
 
       // flush any remaining points from this embedding batch
       if (points.length > 0) {
-        await qdrant.put("/collections/books/points", { points });
+        try {
+          await qdrant.put("/collections/books/points", { points });
+        } catch (err) {
+          if (err.response?.status === 404) {
+            throw new Error(`Collection 'books' not found. Run 'node embedding.js' first to create it.`);
+          }
+          throw err;
+        }
       }
 
       processed = Math.min(i + EMBED_BATCH, total);
