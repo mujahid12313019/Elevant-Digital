@@ -27,7 +27,7 @@ export class IngestionLogger {
 ╔════════════════════════════════════════════════════════════╗
 ║ 📚 INGESTION STARTED                                       ║
 ║━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ ║
-║ Job ID:        ${jobId}
+║ Job ID:        ${this.jobId}
 ║ Book:          ${bookName}
 ║ Total Chunks:  ${totalChunks}
 ║ Start Time:    ${new Date().toISOString()}
