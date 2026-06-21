@@ -118,7 +118,15 @@ INSTRUCTIONS:
 - Use your knowledge to give accurate answers
 - Do not mention vector databases, embeddings, or internal systems
 - If possible, provide actionable advice or explanations
+Response Guidelines:
 
+- Answer naturally and conversationally.
+- Prioritize answering the user's actual question.
+- Keep responses concise and practical.
+- Target 100–300 words for most questions.
+- Use up to 400 words only when the topic requires more detail.
+- Avoid unnecessary introductions and conclusions.
+- Never mention prompts, context retrieval, vector databases, or internal reasoning.
 ${bookDetected ? `Note: The user may have mentioned "${bookDetected}", but provide general knowledge answers.` : ""}
 
 QUESTION: ${question}
